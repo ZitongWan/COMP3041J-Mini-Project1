@@ -1,127 +1,218 @@
-"""
-Campus Buzz - Processing Function (处理函数)
-=============================================
-角色：Serverless 函数 - 应用项目规则并计算结果
-平台：阿里云函数计算 FC 3.0 (HTTP触发器)
-"""
+# Alibaba Cloud FC 3.0 - Processing Function
+# Pure Python implementation
 
-import os, re, json, logging, requests
+import json
+import logging
+import os
+import re
+import requests
+import random
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 logger = logging.getLogger()
 
-RESULT_UPDATE_FN_URL = os.environ.get('RESULT_UPDATE_FN_URL', 'http://localhost:9003')
-
-CATEGORY_KEYWORDS = [
-    {'category': 'OPPORTUNITY', 'priority': 'HIGH', 'keywords': ['career', 'internship', 'recruitment']},
-    {'category': 'ACADEMIC', 'priority': 'MEDIUM', 'keywords': ['workshop', 'seminar', 'lecture']},
-    {'category': 'SOCIAL', 'priority': 'NORMAL', 'keywords': ['club', 'society', 'social']}
-]
-DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
-REQUIRED_FIELDS = ['title', 'description', 'location', 'event_date', 'organiser']
+# Environment variables
+RESULT_UPDATE_FN_URL = os.environ.get('RESULT_UPDATE_FN_URL', 'http://localhost:5004')
 
 
-def process_submission(data):
-    missing = [f for f in REQUIRED_FIELDS if not data.get(f, '').strip()]
-    if missing:
-        return {'status': 'INCOMPLETE', 'category': '', 'priority': '',
-                 'note': f'Missing required field(s): {", ".join(missing)}.'}
-
-    date_ok = bool(DATE_PATTERN.match(data.get('event_date', '').strip()))
-    desc_ok = len(data.get('description', '').strip()) >= 40
-
-    if not date_ok or not desc_ok:
-        issues = []
-        if not date_ok:
-            issues.append('Date format is invalid (must be YYYY-MM-DD)')
-        if not desc_ok:
-            issues.append(f'Description is too short ({len(data.get("description","").strip())}/40)')
-        cat, pri = assign_category(data)
-        return {'status': 'NEEDS REVISION', 'category': cat, 'priority': pri,
-                'note': f'{"; ".join(issues)}. Category: {cat}. Priority: {pri}.'}
-
-    cat, pri = assign_category(data)
-    return {'status': 'APPROVED', 'category': cat, 'priority': pri,
-            'note': f'All checks passed. Category: {cat}. Priority: {pri}.'}
+def parse_fc3_event(event):
+    """Parse FC3 HTTP trigger event format"""
+    if isinstance(event, str):
+        fc_event = json.loads(event) if event.strip() else {}
+    elif isinstance(event, bytes):
+        fc_event = json.loads(event.decode('utf-8')) if event.strip() else {}
+    else:
+        fc_event = event or {}
+    return fc_event
 
 
-def assign_category(data):
-    text = (data.get('title', '') + ' ' + data.get('description', '')).lower()
-    for c in CATEGORY_KEYWORDS:
-        for kw in c['keywords']:
-            if kw.lower() in text:
-                return c['category'], c['priority']
-    return 'GENERAL', 'NORMAL'
+def validate_date_format(date_str):
+    """
+    Validate date format - must be YYYY-MM-DD
+    Returns: (is_valid, error_message)
+    """
+    if not date_str:
+        return True, None  # Empty date is allowed (completeness check handles this)
+    
+    # Check format YYYY-MM-DD using regex
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return False, f"Invalid date format: '{date_str}'. Expected format: YYYY-MM-DD"
+    
+    # Check if it's a valid date
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+        return True, None
+    except ValueError:
+        return False, f"Invalid date: '{date_str}' is not a valid calendar date"
+
+
+def check_record_completeness(record):
+    """
+    Check if the record is complete
+    Required fields: title
+    Optional fields: description, location, event_date, organiser
+    """
+    title = record.get('title', '').strip()
+    description = record.get('description', '').strip()
+    location = record.get('location', '').strip()
+    event_date = record.get('event_date', '').strip()
+    organiser = record.get('organiser', '').strip()
+    
+    # Title is required
+    if not title:
+        return False, "Title is required"
+    
+    # Check if all fields are filled
+    all_filled = bool(description and location and event_date and organiser)
+    return all_filled, "Complete" if all_filled else "Missing optional fields"
+
+
+def apply_processing_rules(record):
+    """
+    Apply project rules and calculate result
+    """
+    title = record.get('title', '')
+    description = record.get('description', '')
+    category = record.get('category', '')
+    priority = record.get('priority', '')
+    event_date = record.get('event_date', '').strip()
+    
+    # Check completeness first
+    is_complete, completeness_msg = check_record_completeness(record)
+    
+    if not is_complete:
+        # Return INCOMPLETE status
+        return {
+            'result': 'INCOMPLETE',
+            'status': 'INCOMPLETE',
+            'category': '',
+            'priority': 'LOW',
+            'note': f'Incomplete submission: {completeness_msg}. Please provide all required information.',
+            'processed_by': 'processing-function'
+        }
+    
+    # Check date format if date is provided
+    if event_date:
+        is_valid_date, date_error = validate_date_format(event_date)
+        if not is_valid_date:
+            return {
+                'result': 'NEEDS REVISION',
+                'status': 'NEEDS REVISION',
+                'category': '',
+                'priority': 'NORMAL',
+                'note': f'Date format error: {date_error}',
+                'processed_by': 'processing-function'
+            }
+    
+    # Calculate score
+    score = random.randint(60, 100)
+    
+    # Apply business rules based on title keywords
+    if 'exam' in title.lower() or 'test' in title.lower():
+        result = 'APPROVED'
+        note = 'Academic event - approved'
+        category = 'Academic'
+    elif 'party' in title.lower() or 'social' in title.lower():
+        result = 'APPROVED'
+        note = 'Social event - approved'
+        category = 'Social'
+    elif 'career' in title.lower() or 'job' in title.lower():
+        result = 'APPROVED'
+        note = 'Career opportunity - approved'
+        category = 'Opportunity'
+    else:
+        result = 'APPROVED'
+        note = 'Event approved after review'
+        category = category or 'General'
+    
+    return {
+        'result': result,
+        'status': result,
+        'category': category,
+        'priority': priority or 'NORMAL',
+        'note': note,
+        'score': score,
+        'processed_by': 'processing-function'
+    }
+
+
+def process_logic(data):
+    """Business logic"""
+    headers = {'Content-Type': 'application/json'}
+    
+    record_id = data.get('record_id')
+    record = data.get('record', {})
+    action = data.get('action', 'process_submission')
+    
+    logger.info(f"[Processing] Received request: record_id={record_id}, action={action}")
+    
+    if not record_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Missing record_id parameter'})}
+    
+    try:
+        # Apply processing rules
+        processing_result = apply_processing_rules(record)
+        logger.info(f"[Processing] Rules applied: record_id={record_id}, result={processing_result['result']}")
+        
+        # Call Result Update Function to update the result
+        update_resp = requests.post(
+            RESULT_UPDATE_FN_URL,
+            json={
+                'record_id': record_id,
+                'status': processing_result['status'],
+                'category': processing_result['category'],
+                'priority': processing_result['priority'],
+                'note': processing_result['note']
+            },
+            timeout=20,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        if update_resp.status_code == 200:
+            logger.info(f"[Processing] Result update successful: record_id={record_id}")
+        else:
+            logger.warning(f"[Processing] Result update failed: record_id={record_id}, status={update_resp.status_code}")
+        
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps({
+                'message': 'Processing complete',
+                'record_id': record_id,
+                'processing_result': processing_result
+            })
+        }
+        
+    except requests.RequestException as e:
+        logger.error(f"[Processing] Request failed: {e}")
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': f'Request failed: {str(e)}'})}
+    except Exception as e:
+        logger.error(f"[Processing] Unexpected error: {e}", exc_info=True)
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
 
 
 def handler(event, context):
     """
-    FC3 HTTP 触发器调用此函数
-    event 是 JSON 字符串: {"version":"v1","rawPath":"/","body":"{...}","isBase64Encoded":false}
+    Alibaba Cloud FC 3.0 Standard Entry Point
     """
     try:
-        # ---- event 是 JSON 字符串，解析得到 FC3 事件对象 ----
-        if isinstance(event, str):
-            fc_event = json.loads(event)
-        elif isinstance(event, bytes):
-            fc_event = json.loads(event.decode('utf-8'))
-        else:
-            fc_event = event
-
-        logger.info(f"[Handler] fc_event keys={list(fc_event.keys())}")
-
-        # ---- 从 fc_event['body'] 中提取业务数据 ----
+        fc_event = parse_fc3_event(event)
         body_str = fc_event.get('body', '')
-        if not body_str:
-            return {'statusCode': 400, 'body': json.dumps({'error': '请求体为空'})}
-
-        # body_str 是 JSON 字符串，再次解析
-        data = json.loads(body_str)
-        logger.info(f"[Handler] data={data}")
-
-        record_id = data.get('record_id')
-        if not record_id:
-            return {'statusCode': 400, 'body': json.dumps({'error': '缺少 record_id 参数'})}
-
-        result = process_submission(data)
-
-        # 调用 Result Update Function
-        try:
-            update_resp = requests.post(RESULT_UPDATE_FN_URL,
-                json={'record_id': record_id, 'status': result['status'],
-                      'category': result['category'], 'priority': result['priority'],
-                      'note': result['note']}, timeout=10)
-            update_resp.raise_for_status()
-            update_result = update_resp.json()
-            return {'statusCode': 200, 'body': json.dumps({
-                'record_id': record_id, 'result': result,
-                'update_status': 'success', 'updated_record': update_result})}
-        except requests.RequestException as e:
-            logger.error(f"[Handler] 调用 Result Update 失败: {e}")
-            return {'statusCode': 500, 'body': json.dumps({
-                'error': f'结果更新失败: {str(e)}', 'computed_result': result})}
+        
+        if body_str:
+            data = json.loads(body_str)
+        else:
+            data = fc_event if isinstance(fc_event, dict) else json.loads(str(fc_event))
+        
+        return process_logic(data)
+    except json.JSONDecodeError as e:
+        logger.error(f"[Handler] JSON parse error: {e}")
+        return {'statusCode': 400, 'headers': {'Content-Type': 'application/json'}, 'body': json.dumps({'error': f'Invalid JSON: {str(e)}'})}
     except Exception as e:
-        logger.error(f"[Handler] 错误: {e}", exc_info=True)
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
-
-
-if __name__ == '__main__':
-    import wsgiref.simple_server
-    def app(environ, start_response):
-        path = environ.get('PATH_INFO', '/')
-        method = environ.get('REQUEST_METHOD', 'GET')
-        logger.info(f"[WSGI] {method} {path}")
-        if method == 'GET' and path == '/health':
-            start_response('200 OK', [('Content-Type', 'application/json')])
-            return [json.dumps({'status': 'healthy'}).encode()]
-        if method == 'POST' and path == '/':
-            clen = int(environ.get('CONTENT_LENGTH', 0) or 0)
-            body = environ['wsgi.input'].read(clen)
-            result = handler(body.decode('utf-8'), None)
-            sc = '200 OK' if result['statusCode'] == 200 else f'{result["statusCode"]} Error'
-            start_response(sc, [('Content-Type', 'application/json')])
-            return [result['body'].encode()]
-        start_response('404', [('Content-Type', 'application/json')])
-        return [json.dumps({'error': 'not found'}).encode()]
-    srv = wsgiref.simple_server.make_server('0.0.0.0', 9002, app)
-    srv.serve_forever()
+        logger.error(f"[Handler] Unexpected error: {e}", exc_info=True)
+        return {'statusCode': 500, 'headers': {'Content-Type': 'application/json'}, 'body': json.dumps({'error': str(e)})}

@@ -1,5 +1,5 @@
 # ==============================================================
-# Campus Buzz - 阿里云函数计算 FC 3.0 部署配置 (优化版)
+# Campus Buzz - 阿里云函数计算 FC 3.0 部署配置
 # ==============================================================
 
 edition: 3.0.0
@@ -12,7 +12,6 @@ vars:
     name: campus-buzz
     description: Campus Buzz - Campus Event Submission System
     logConfig: auto
-    nasConfig: auto
 
 resources:
   # ----------------------------------------------------------
@@ -26,13 +25,13 @@ resources:
       description: 将新提交事件转换为处理请求
       runtime: python3.10
       code: ./serverless/submission-event-function
-      handler: app.handler  # 注意：如果你的文件名是 app.py，这里写 app.handler
+      handler: app.handler
       timeout: 30
       memorySize: 256
       cpu: 0.25
       diskSize: 512
+      installDependency: true
       environmentVariables:
-        # 只需要基础URL，函数会自动拼接 /api/records/{record_id}
         DATA_SERVICE_URL: "https://goldmine-washable-swimsuit.ngrok-free.dev"
         PROCESSING_FN_URL: "https://processfunction-socuuqhcyq.cn-beijing.fcapp.run"
       triggers:
@@ -62,6 +61,7 @@ resources:
       memorySize: 256
       cpu: 0.25
       diskSize: 512
+      installDependency: true
       environmentVariables:
         RESULT_UPDATE_FN_URL: "https://result-function-himtzogrsl.cn-beijing.fcapp.run"
       triggers:
@@ -91,8 +91,8 @@ resources:
       memorySize: 256
       cpu: 0.25
       diskSize: 512
+      installDependency: true
       environmentVariables:
-        # 只需要基础URL，函数会自动拼接 /api/records/{record_id}
         DATA_SERVICE_URL: "https://goldmine-washable-swimsuit.ngrok-free.dev"
       triggers:
         - triggerName: http-trigger

@@ -110,7 +110,7 @@ def get_status(record_id):
             timeout=10
         )
         if resp.status_code == 404:
-            return jsonify({'error': '记录不存在'}), 404
+            return jsonify({'error': 'Record not found'}), 404
         resp.raise_for_status()
         record = resp.json()
         return jsonify(record)

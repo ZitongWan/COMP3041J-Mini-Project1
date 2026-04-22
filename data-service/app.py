@@ -178,9 +178,9 @@ def get_record(record_id):
 
 @app.route('/api/records/<int:record_id>', methods=['PUT'])
 def update_record(record_id):
-    """更新提交记录（处理结果回写）
+    """Update a submission record (processing result writeback)
     
-    请求体示例：
+    Request body example:
     {
         "status": "APPROVED",
         "category": "OPPORTUNITY",
@@ -190,17 +190,17 @@ def update_record(record_id):
     """
     data = request.get_json()
     if not data:
-        return jsonify({'error': '请求体不能为空'}), 400
+        return jsonify({'error': 'Request body cannot be empty'}), 400
 
     db = get_db()
     record = db.execute('SELECT * FROM submissions WHERE id = ?', (record_id,)).fetchone()
 
     if record is None:
-        return jsonify({'error': '记录不存在'}), 404
+        return jsonify({'error': 'Record not found'}), 404
 
     now = datetime.utcnow().isoformat()
 
-    # 只更新允许修改的字段
+    # Only update allowed fields
     status = data.get('status', record['status'])
     category = data.get('category', record['category'])
     priority = data.get('priority', record['priority'])

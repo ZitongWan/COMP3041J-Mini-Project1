@@ -1,102 +1,109 @@
-"""
-Campus Buzz - Submission Event Function (提交事件函数)
-=====================================================
-角色：Serverless 函数 - 将新提交事件转换为处理请求
-平台：阿里云函数计算 FC 3.0 (HTTP触发器)
-"""
+# Alibaba Cloud FC 3.0 - Submission Event Function
+# Pure Python implementation
 
-import os, json, logging, requests
+import json
+import logging
+import os
+import requests
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 logger = logging.getLogger()
 
-DATA_SERVICE_URL = os.environ.get('DATA_SERVICE_URL', 'http://data-service:5002')
-PROCESSING_FN_URL = os.environ.get('PROCESSING_FN_URL', 'http://localhost:9001')
+# Environment variables
+DATA_SERVICE_URL = os.environ.get('DATA_SERVICE_URL', 'http://localhost:5002')
+PROCESSING_FN_URL = os.environ.get('PROCESSING_FN_URL', 'http://localhost:5003')
 
 
 def parse_fc3_event(event):
     """
-    解析 FC3 HTTP 触发器传入的 event
-    event 是 JSON 字符串: {"version":"v1","rawPath":"/","body":"{...}","isBase64Encoded":false}
+    Parse FC3 HTTP trigger event format
+    FC3 event may be str or bytes type
     """
     if isinstance(event, str):
-        fc_event = json.loads(event)
+        fc_event = json.loads(event) if event.strip() else {}
     elif isinstance(event, bytes):
-        fc_event = json.loads(event.decode('utf-8'))
+        fc_event = json.loads(event.decode('utf-8')) if event.strip() else {}
     else:
-        fc_event = event
-
-    body_str = fc_event.get('body', '')
-    if body_str:
-        return json.loads(body_str)
-    return {}
+        fc_event = event or {}
+    return fc_event
 
 
 def process_logic(data):
+    """Business logic"""
+    headers = {'Content-Type': 'application/json'}
+    
     record_id = data.get('record_id')
-    action = data.get('action', '')
+    action = data.get('action', 'process_submission')
+    
+    logger.info(f"[Event] Received request: record_id={record_id}, action={action}")
+    
     if not record_id:
-        return {'statusCode': 400, 'body': json.dumps({'error': '缺少 record_id 参数'})}
-
-    logger.info(f"[事件] 收到提交事件: record_id={record_id}, action={action}")
-
-    # 从 Data Service 获取完整记录
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Missing record_id parameter'})}
+    
     try:
-        resp = requests.get(f'{DATA_SERVICE_URL}/api/records/{record_id}', timeout=10)
-        resp.raise_for_status()
-        record = resp.json()
-        logger.info(f"[事件] 成功获取记录: title={record.get('title', 'N/A')}")
+        # 1. Get record details from Data Service
+        record_resp = requests.get(f'{DATA_SERVICE_URL}/api/records/{record_id}', timeout=10)
+        record_resp.raise_for_status()
+        record = record_resp.json()
+        logger.info(f"[Event] Record retrieved successfully: record_id={record_id}")
+        
+        # 2. Call Processing Function to process
+        process_resp = requests.post(
+            PROCESSING_FN_URL,
+            json={
+                'record_id': record_id,
+                'action': action,
+                'record': record
+            },
+            timeout=25,
+            headers={'Content-Type': 'application/json'}
+        )
+        process_result = process_resp.json() if process_resp.text else {}
+        
+        if process_resp.status_code != 200:
+            logger.warning(f"[Event] Processing Function returned non-200: {process_resp.status_code}")
+        
+        logger.info(f"[Event] Processing Function executed: record_id={record_id}")
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps({
+                'message': 'Event processing triggered',
+                'record_id': record_id,
+                'processing_result': process_result
+            })
+        }
+        
     except requests.RequestException as e:
-        logger.error(f"[事件] 获取记录失败: {e}")
-        return {'statusCode': 500, 'body': json.dumps({'error': f'无法获取记录: {str(e)}'})}
-
-    # 调用 Processing Function
-    try:
-        process_resp = requests.post(PROCESSING_FN_URL, json={
-            'record_id': record_id,
-            'title': record.get('title', ''),
-            'description': record.get('description', ''),
-            'location': record.get('location', ''),
-            'event_date': record.get('event_date', ''),
-            'organiser': record.get('organiser', '')
-        }, timeout=15)
-        process_resp.raise_for_status()
-        result = process_resp.json()
-        logger.info(f"[事件] Processing Function 执行完成: record_id={record_id}")
-        return {'statusCode': 200, 'body': json.dumps({
-            'message': '事件处理已触发', 'record_id': record_id, 'processing_result': result})}
-    except requests.RequestException as e:
-        logger.error(f"[事件] 调用 Processing Function 失败: {e}")
-        return {'statusCode': 500, 'body': json.dumps({'error': f'处理函数调用失败: {str(e)}'})}
+        logger.error(f"[Event] Request failed: {e}")
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': f'Request failed: {str(e)}'})}
+    except Exception as e:
+        logger.error(f"[Event] Unexpected error: {e}", exc_info=True)
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
 
 
 def handler(event, context):
-    """FC3 HTTP 触发器入口：event 是 JSON 字符串"""
+    """
+    Alibaba Cloud FC 3.0 Standard Entry Point
+    """
     try:
-        data = parse_fc3_event(event)
+        fc_event = parse_fc3_event(event)
+        body_str = fc_event.get('body', '')
+        
+        if body_str:
+            data = json.loads(body_str)
+        else:
+            # Try to parse event directly (sync invocation may pass business data directly)
+            data = fc_event if isinstance(fc_event, dict) else json.loads(str(fc_event))
+        
         return process_logic(data)
+    except json.JSONDecodeError as e:
+        logger.error(f"[Handler] JSON parse error: {e}")
+        return {'statusCode': 400, 'headers': {'Content-Type': 'application/json'}, 'body': json.dumps({'error': f'Invalid JSON: {str(e)}'})}
     except Exception as e:
-        logger.error(f"[事件] 错误: {e}", exc_info=True)
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
-
-
-if __name__ == '__main__':
-    import wsgiref.simple_server
-    def app(environ, start_response):
-        path = environ.get('PATH_INFO', '/')
-        method = environ.get('REQUEST_METHOD', 'GET')
-        logger.info(f"[WSGI] {method} {path}")
-        if method == 'GET' and path == '/health':
-            start_response('200 OK', [('Content-Type', 'application/json')])
-            return [json.dumps({'status': 'healthy'}).encode()]
-        if method == 'POST' and path == '/':
-            clen = int(environ.get('CONTENT_LENGTH', 0) or 0)
-            body = environ['wsgi.input'].read(clen)
-            result = handler(body.decode('utf-8'), None)
-            sc = '200 OK' if result['statusCode'] == 200 else f'{result["statusCode"]} Error'
-            start_response(sc, [('Content-Type', 'application/json')])
-            return [result['body'].encode()]
-        start_response('404', [('Content-Type', 'application/json')])
-        return [json.dumps({'error': 'not found'}).encode()]
-    srv = wsgiref.simple_server.make_server('0.0.0.0', 9001, app)
-    srv.serve_forever()
+        logger.error(f"[Handler] Unexpected error: {e}", exc_info=True)
+        return {'statusCode': 500, 'headers': {'Content-Type': 'application/json'}, 'body': json.dumps({'error': str(e)})}
