@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Buzz - Campus Event Submission</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 页面标题 -->
+        <header>
+            <h1>🐝 Campus Buzz</h1>
+            <p class="subtitle">Campus Event Submission &amp; Review System</p>
+        </header>
+
+        <!-- 提交表单 -->
+        <section id="submit-section">
+            <h2>Submit a Campus Event</h2>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="title">Event Title</label>
+                    <input type="text" id="title" name="title" placeholder="e.g. Career Fair 2026">
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="4" placeholder="Describe the event in detail (at least 40 characters)..."></textarea>
+                    <small id="desc-counter">0 / 40 characters minimum</small>
+                </div>
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" placeholder="e.g. Main Hall, Building A">
+                </div>
+                <div class="form-group">
+                    <label for="event_date">Date</label>
+                    <input type="text" id="event_date" name="event_date" placeholder="YYYY-MM-DD">
+                    <small>Format: YYYY-MM-DD</small>
+                </div>
+                <div class="form-group">
+                    <label for="organiser">Organiser</label>
+                    <input type="text" id="organiser" name="organiser" placeholder="e.g. Student Union">
+                </div>
+                <button type="submit" id="submit-btn">Submit Event</button>
+            </form>
+            <div id="submit-message" class="message" style="display:none;"></div>
+        </section>
+
+        <!-- 查询结果 -->
+        <section id="result-section" style="display:none;">
+            <h2>Submission Result</h2>
+            <div id="result-card" class="result-card">
+                <div class="result-header">
+                    <span id="result-status" class="status-badge"></span>
+                </div>
+                <div class="result-details">
+                    <div class="detail-row"><strong>Record ID:</strong> <span id="result-id"></span></div>
+                    <div class="detail-row"><strong>Category:</strong> <span id="result-category"></span></div>
+                    <div class="detail-row"><strong>Priority:</strong> <span id="result-priority"></span></div>
+                    <div class="detail-row"><strong>Note:</strong> <span id="result-note"></span></div>
+                </div>
+            </div>
+            <button id="new-submission-btn">Submit Another Event</button>
+        </section>
+
+        <!-- 历史记录 -->
+        <section id="history-section">
+            <h2>Recent Submissions</h2>
+            <button id="refresh-btn" class="secondary-btn">Refresh</button>
+            <div id="records-list"></div>
+            <div id="pagination" class="pagination"></div>
+        </section>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div id="record-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="modal-close" id="modal-close">&times;</span>
+            <h2 style="margin-bottom:15px;">Submission Details</h2>
+            <div class="modal-header">
+                <span id="modal-status" class="status-badge"></span>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row"><strong>Record ID:</strong> <span id="modal-id"></span></div>
+                <div class="detail-row"><strong>Title:</strong> <span id="modal-title"></span></div>
+                <div class="detail-row"><strong>Description:</strong> <span id="modal-desc"></span></div>
+                <div class="detail-row"><strong>Location:</strong> <span id="modal-location"></span></div>
+                <div class="detail-row"><strong>Date:</strong> <span id="modal-date"></span></div>
+                <div class="detail-row"><strong>Organiser:</strong> <span id="modal-organiser"></span></div>
+                <div class="detail-row"><strong>Category:</strong> <span id="modal-category"></span></div>
+                <div class="detail-row"><strong>Priority:</strong> <span id="modal-priority"></span></div>
+                <div class="detail-row"><strong>Note:</strong> <span id="modal-note"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

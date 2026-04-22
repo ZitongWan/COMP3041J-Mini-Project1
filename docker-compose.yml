@@ -1,0 +1,94 @@
+# ==============================================================
+# Campus Buzz - 混合云架构 Docker Compose 配置
+# ==============================================================
+# 架构：
+#   - 3 个容器服务运行在本地 Docker
+#   - 3 个 Serverless 函数部署在阿里云函数计算 FC 3.0
+#
+# 部署步骤：
+#   1. 先部署 FC 函数：s deploy --all
+#   2. 将函数 URL 填入 .env 文件
+#   3. docker-compose up --build
+#
+# 架构示意：
+#   [用户] → Presentation(容器) → Workflow(容器) → [FC: 事件函数]
+#                                                       ↓
+#                                              [FC: 处理函数]
+#                                                       ↓
+#                                              [FC: 结果更新函数]
+#                                                       ↓
+#                                              Data Service(容器)
+# ==============================================================
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # Presentation Service (容器) - 端口 5000
+  # ============================================================
+  presentation-service:
+    build:
+      context: ./presentation-service
+      dockerfile: Dockerfile
+    container_name: campus-buzz-presentation
+    ports:
+      - "5000:5000"
+    environment:
+      - WORKFLOW_SERVICE_URL=http://workflow-service:5001
+      - DATA_SERVICE_URL=http://data-service:5002
+      - FLASK_ENV=production
+    depends_on:
+      - workflow-service
+      - data-service
+    networks:
+      - campus-buzz-net
+    restart: unless-stopped
+
+  # ============================================================
+  # Workflow Service (容器) - 端口 5001
+  # ============================================================
+  workflow-service:
+    build:
+      context: ./workflow-service
+      dockerfile: Dockerfile
+    container_name: campus-buzz-workflow
+    ports:
+      - "5001:5001"
+    environment:
+      - DATA_SERVICE_URL=http://campus-buzz-data:5002
+      # ⚠️ 部署FC后替换为实际的HTTP触发器URL
+      # 格式如: https://xxxxx.cn-beijing.fc.aliyuncs.com
+      - SUBMISSION_EVENT_FN_URL=${SUBMISSION_EVENT_FN_URL:-http://host.docker.internal:9001}
+      - FLASK_ENV=production
+    depends_on:
+      - data-service
+    networks:
+      - campus-buzz-net
+    restart: unless-stopped
+
+  # ============================================================
+  # Data Service (容器) - 端口 5002
+  # ============================================================
+  data-service:
+    build:
+      context: ./data-service
+      dockerfile: Dockerfile
+    container_name: campus-buzz-data
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_PATH=/data/campus_buzz.db
+      - FLASK_ENV=production
+    volumes:
+      - campus-buzz-data:/data
+    networks:
+      - campus-buzz-net
+    restart: unless-stopped
+
+networks:
+  campus-buzz-net:
+    driver: bridge
+
+volumes:
+  campus-buzz-data:
+    driver: local
