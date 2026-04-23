@@ -1,26 +1,27 @@
 # Campus Buzz - Data Service Dockerfile
-# 数据服务：Flask + SQLite
+# Flask + SQLite backend service
+
 FROM python:3.11-slim
 
-# 设置工作目录
+# Set working directory
 WORKDIR /app
 
-# 安装依赖
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码
+# Copy application code
 COPY app.py .
 
-# 创建数据持久化目录
+# Create persistent data directory for SQLite
 RUN mkdir -p /data
 
-# 暴露端口
+# Expose the service port
 EXPOSE 5002
 
-# 设置环境变量
+# Environment variables
 ENV DATABASE_PATH=/data/campus_buzz.db
 ENV FLASK_ENV=production
 
-# 启动应用
+# Start the Flask application
 CMD ["python", "app.py"]

@@ -1,5 +1,5 @@
 # ==============================================================
-# Campus Buzz - 阿里云函数计算 FC 3.0 部署配置
+# Campus Buzz - Alibaba Cloud Function Compute FC 3.0 config
 # ==============================================================
 
 edition: 3.0.0
@@ -22,7 +22,7 @@ resources:
     props:
       region: ${vars.region}
       functionName: submission-event-function
-      description: 将新提交事件转换为处理请求
+      description: Converts new submissions into processing requests
       runtime: python3.10
       code: ./serverless/submission-event-function
       handler: app.handler
@@ -37,7 +37,7 @@ resources:
       triggers:
         - triggerName: http-trigger
           triggerType: http
-          description: HTTP触发器
+          description: HTTP trigger
           qualifier: LATEST
           triggerConfig:
             methods:
@@ -53,7 +53,7 @@ resources:
     props:
       region: ${vars.region}
       functionName: processing-function
-      description: 应用项目规则并计算结果
+      description: Applies validation rules and calculates the result
       runtime: python3.10
       code: ./serverless/processing-function
       handler: app.handler
@@ -67,7 +67,7 @@ resources:
       triggers:
         - triggerName: http-trigger
           triggerType: http
-          description: HTTP触发器
+          description: HTTP trigger
           qualifier: LATEST
           triggerConfig:
             methods:
@@ -83,7 +83,7 @@ resources:
     props:
       region: ${vars.region}
       functionName: result-update-function
-      description: 更新存储记录的处理结果
+      description: Writes processed results back to stored records
       runtime: python3.10
       code: ./serverless/result-update-function
       handler: app.handler
@@ -97,7 +97,7 @@ resources:
       triggers:
         - triggerName: http-trigger
           triggerType: http
-          description: HTTP触发器
+          description: HTTP trigger
           qualifier: LATEST
           triggerConfig:
             methods:

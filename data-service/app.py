@@ -1,15 +1,15 @@
 """
-Campus Buzz - Data Service (数据服务)
-=====================================
-角色：容器服务 - 存储和检索提交记录
-技术栈：Python Flask + SQLite
-端口：5002
+Campus Buzz - Data Service
+==========================
+Role: Backend service for storing and retrieving submissions
+Tech stack: Python Flask + SQLite
+Port: 5002
 
-提供的API端点：
-  POST /api/records        - 创建新提交记录
-  GET  /api/records         - 获取所有提交记录
-  GET  /api/records/<id>    - 获取单条提交记录
-  PUT  /api/records/<id>    - 更新提交记录（处理结果回写）
+Available API endpoints:
+  POST /api/records        - Create a new submission record
+  GET  /api/records        - Get all submission records
+  GET  /api/records/<id>   - Get a single submission record
+  PUT  /api/records/<id>   - Update a submission record (for processing results)
 """
 
 import sqlite3
@@ -19,32 +19,32 @@ from datetime import datetime
 from flask import Flask, request, jsonify, g
 
 # ============================================================
-# 应用初始化
+# App initialization
 # ============================================================
 app = Flask(__name__)
 
-# 数据库文件路径（Docker 容器中挂载到持久卷）
+# Database file path (mounted to persistent volume in Docker)
 DATABASE = os.environ.get('DATABASE_PATH', '/data/campus_buzz.db')
 
 
 def get_db():
-    """获取数据库连接（每个请求一个连接）"""
+    """Get database connection (one per request)"""
     if 'db' not in g:
         g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row  # 让查询结果可以用列名访问
+        g.db.row_factory = sqlite3.Row  # Allow accessing columns by name
     return g.db
 
 
 @app.teardown_appcontext
 def close_db(exception):
-    """请求结束时关闭数据库连接"""
+    """Close database connection when request ends"""
     db = g.pop('db', None)
     if db is not None:
         db.close()
 
 
 def init_db():
-    """初始化数据库表结构"""
+    """Initialize database tables if they don't exist"""
     db = sqlite3.connect(DATABASE)
     db.execute('''
         CREATE TABLE IF NOT EXISTS submissions (
@@ -67,14 +67,14 @@ def init_db():
 
 
 # ============================================================
-# API 路由
+# API Routes
 # ============================================================
 
 @app.route('/api/records', methods=['POST'])
 def create_record():
-    """创建新的提交记录
+    """Create a new submission record
     
-    请求体示例：
+    Example request body:
     {
         "title": "Career Fair 2026",
         "description": "Annual career fair with top companies...",
@@ -85,7 +85,7 @@ def create_record():
     """
     data = request.get_json()
     if not data:
-        return jsonify({'error': '请求体不能为空'}), 400
+        return jsonify({'error': 'Request body cannot be empty'}), 400
 
     now = datetime.utcnow().isoformat()
     db = get_db()
@@ -105,7 +105,7 @@ def create_record():
 
     db.commit()
 
-    # 返回创建的记录
+    # Return the created record
     record_id = cursor.lastrowid
     record = db.execute('SELECT * FROM submissions WHERE id = ?', (record_id,)).fetchone()
 
@@ -127,7 +127,7 @@ def create_record():
 
 @app.route('/api/records', methods=['GET'])
 def get_records():
-    """获取所有提交记录"""
+    """Get all submission records"""
     db = get_db()
     records = db.execute('SELECT * FROM submissions ORDER BY created_at DESC').fetchall()
 
@@ -153,12 +153,12 @@ def get_records():
 
 @app.route('/api/records/<int:record_id>', methods=['GET'])
 def get_record(record_id):
-    """获取单条提交记录"""
+    """Get a single submission record by ID"""
     db = get_db()
     record = db.execute('SELECT * FROM submissions WHERE id = ?', (record_id,)).fetchone()
 
     if record is None:
-        return jsonify({'error': '记录不存在'}), 404
+        return jsonify({'error': 'Record not found'}), 404
 
     return jsonify({
         'id': record['id'],
@@ -178,9 +178,9 @@ def get_record(record_id):
 
 @app.route('/api/records/<int:record_id>', methods=['PUT'])
 def update_record(record_id):
-    """Update a submission record (processing result writeback)
+    """Update a submission record (for processing result writeback)
     
-    Request body example:
+    Example request body:
     {
         "status": "APPROVED",
         "category": "OPPORTUNITY",
@@ -200,7 +200,7 @@ def update_record(record_id):
 
     now = datetime.utcnow().isoformat()
 
-    # Only update allowed fields
+    # Only update the fields that are allowed to change
     status = data.get('status', record['status'])
     category = data.get('category', record['category'])
     priority = data.get('priority', record['priority'])
@@ -214,7 +214,7 @@ def update_record(record_id):
 
     db.commit()
 
-    # 返回更新后的记录
+    # Return the updated record
     updated = db.execute('SELECT * FROM submissions WHERE id = ?', (record_id,)).fetchone()
     return jsonify({
         'id': updated['id'],
@@ -234,19 +234,19 @@ def update_record(record_id):
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """健康检查端点"""
+    """Health check endpoint"""
     return jsonify({'status': 'healthy', 'service': 'data-service'})
 
 
 # ============================================================
-# 启动入口
+# Startup
 # ============================================================
 if __name__ == '__main__':
-    # 确保数据目录存在
+    # Ensure data directory exists
     os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
-    # 初始化数据库
+    # Initialize database schema
     init_db()
-    print("[Data Service] 数据库初始化完成")
-    print(f"[Data Service] 数据库路径: {DATABASE}")
-    # 启动服务
+    print("[Data Service] Database initialized")
+    print(f"[Data Service] Database path: {DATABASE}")
+    # Start the Flask server
     app.run(host='0.0.0.0', port=5002, debug=True)
