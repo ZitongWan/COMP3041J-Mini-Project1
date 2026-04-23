@@ -1,14 +1,14 @@
 /**
- * Campus Buzz - Presentation Service 前端逻辑
- * 
- * 职责：
- *   1. 处理表单提交，调用 Workflow Service
- *   2. 轮询处理结果
- *   3. 展示提交历史
+ * Campus Buzz - Presentation Service frontend logic
+ *
+ * Responsibilities:
+ *   1. Handle form submission and call the Workflow Service
+ *   2. Poll for processing results
+ *   3. Display submission history
  */
 
 // ============================================================
-// 页面加载初始化
+// Initial page setup
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     loadRecords();
