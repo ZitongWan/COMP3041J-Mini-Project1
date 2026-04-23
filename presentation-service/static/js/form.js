@@ -1,9 +1,9 @@
 /**
- * Campus Buzz - 表单处理逻辑
+ * Campus Buzz - Form handling logic
  */
 
 /**
- * 设置表单提交处理器
+ * Set up form submission handler
  */
 function setupFormHandler() {
     const form = document.getElementById('event-form');
@@ -13,7 +13,7 @@ function setupFormHandler() {
         const submitBtn = document.getElementById('submit-btn');
         const messageDiv = document.getElementById('submit-message');
 
-        // 收集表单数据
+        // Collect form data
         const formData = {
             title: document.getElementById('title').value.trim(),
             description: document.getElementById('description').value.trim(),
@@ -22,13 +22,13 @@ function setupFormHandler() {
             organiser: document.getElementById('organiser').value.trim()
         };
 
-        // 禁用提交按钮
+        // Disable submit button while processing
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
         messageDiv.style.display = 'none';
 
         try {
-            // 调用 Workflow Service 提交
+            // Send request to Workflow Service
             const resp = await fetch(`${CONFIG.WORKFLOW_URL}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -40,7 +40,7 @@ function setupFormHandler() {
             if (resp.ok) {
                 showMessage('info', `Submission received! Record ID: ${result.record_id}. Processing in background...`);
 
-                // 开始轮询处理结果
+                // Start polling for result
                 pollResult(result.record_id);
             } else {
                 showMessage('error', result.error || 'Submission failed. Please try again.');
@@ -56,7 +56,7 @@ function setupFormHandler() {
 }
 
 /**
- * 设置描述字符计数器
+ * Set up description character counter
  */
 function setupDescCounter() {
     const desc = document.getElementById('description');
@@ -70,7 +70,7 @@ function setupDescCounter() {
 }
 
 /**
- * 填充表单数据
+ * Populate form with existing record data
  */
 function populateForm(record) {
     document.getElementById('title').value = record.title || '';
@@ -79,7 +79,7 @@ function populateForm(record) {
     document.getElementById('event_date').value = record.event_date || '';
     document.getElementById('organiser').value = record.organiser || '';
 
-    // 更新字符计数器
+    // Update character counter
     const desc = document.getElementById('description');
     const counter = document.getElementById('desc-counter');
     const len = desc.value.trim().length;
