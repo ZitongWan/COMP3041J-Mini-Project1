@@ -1,30 +1,30 @@
 # ==============================================================
-# Campus Buzz - 混合云架构 Docker Compose 配置
+# Campus Buzz - Hybrid Cloud Docker Compose setup
 # ==============================================================
-# 架构：
-#   - 3 个容器服务运行在本地 Docker
-#   - 3 个 Serverless 函数部署在阿里云函数计算 FC 3.0
+# Architecture:
+#   - 3 containerized services running locally (Docker)
+#   - 3 serverless functions deployed on Alibaba Cloud FC 3.0
 #
-# 部署步骤：
-#   1. 先部署 FC 函数：s deploy --all
-#   2. 将函数 URL 填入 .env 文件
-#   3. docker-compose up --build
+# Setup steps:
+#   1. Deploy FC functions first: s deploy --all
+#   2. Put the function URLs into the .env file
+#   3. Run: docker-compose up --build
 #
-# 架构示意：
-#   [用户] → Presentation(容器) → Workflow(容器) → [FC: 事件函数]
-#                                                       ↓
-#                                              [FC: 处理函数]
-#                                                       ↓
-#                                              [FC: 结果更新函数]
-#                                                       ↓
-#                                              Data Service(容器)
+# Flow:
+#   [User] → Presentation (container) → Workflow (container) → [FC: submission event]
+#                                                               ↓
+#                                                      [FC: processing]
+#                                                               ↓
+#                                                      [FC: result update]
+#                                                               ↓
+#                                                      Data Service (container)
 # ==============================================================
 
 version: '3.8'
 
 services:
   # ============================================================
-  # Presentation Service (容器) - 端口 5000
+  # Presentation Service (container) - port 5000
   # ============================================================
   presentation-service:
     build:
@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # Workflow Service (容器) - 端口 5001
+  # Workflow Service (container) - port 5001
   # ============================================================
   workflow-service:
     build:
@@ -56,8 +56,8 @@ services:
       - "5001:5001"
     environment:
       - DATA_SERVICE_URL=http://campus-buzz-data:5002
-      # ⚠️ 部署FC后替换为实际的HTTP触发器URL
-      # 格式如: https://xxxxx.cn-beijing.fc.aliyuncs.com
+      # ⚠️ Replace with the actual FC HTTP trigger URL after deployment
+      # Example: https://xxxxx.cn-beijing.fc.aliyuncs.com
       - SUBMISSION_EVENT_FN_URL=${SUBMISSION_EVENT_FN_URL:-http://host.docker.internal:9001}
       - FLASK_ENV=production
     depends_on:
@@ -67,7 +67,7 @@ services:
     restart: unless-stopped
 
   # ============================================================
-  # Data Service (容器) - 端口 5002
+  # Data Service (container) - port 5002
   # ============================================================
   data-service:
     build:
