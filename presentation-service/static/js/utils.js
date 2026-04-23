@@ -1,9 +1,9 @@
 /**
- * Campus Buzz - 工具函数
+ * Campus Buzz - Utility functions
  */
 
 /**
- * 显示消息提示
+ * Show a message to the user
  */
 function showMessage(type, text) {
     const div = document.getElementById('submit-message');
@@ -13,7 +13,7 @@ function showMessage(type, text) {
 }
 
 /**
- * 重置提交按钮
+ * Reset submit button to default state
  */
 function resetSubmitButton() {
     const btn = document.getElementById('submit-btn');
@@ -22,7 +22,7 @@ function resetSubmitButton() {
 }
 
 /**
- * HTML 转义，防止 XSS
+ * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
     const div = document.createElement('div');

@@ -54,8 +54,8 @@ def validate_date_format(date_str):
 def check_record_completeness(record):
     """
     Check if the record is complete
-    Required fields: title
-    Optional fields: description, location, event_date, organiser
+    Required fields: title, description, location, event_date, organiser
+    Returns: (is_complete, message)
     """
     title = record.get('title', '').strip()
     description = record.get('description', '').strip()
@@ -63,40 +63,77 @@ def check_record_completeness(record):
     event_date = record.get('event_date', '').strip()
     organiser = record.get('organiser', '').strip()
     
-    # Title is required
+    # All fields are required
+    missing_fields = []
     if not title:
-        return False, "Title is required"
+        missing_fields.append('title')
+    if not description:
+        missing_fields.append('description')
+    if not location:
+        missing_fields.append('location')
+    if not event_date:
+        missing_fields.append('event_date')
+    if not organiser:
+        missing_fields.append('organiser')
     
-    # Check if all fields are filled
-    all_filled = bool(description and location and event_date and organiser)
-    return all_filled, "Complete" if all_filled else "Missing optional fields"
+    if missing_fields:
+        return False, f"Missing required fields: {', '.join(missing_fields)}"
+    
+    return True, "All fields complete"
+
+
+def classify_event(title, description):
+    """
+    Classify event based on keywords in title and description
+    Priority order: OPPORTUNITY > ACADEMIC > SOCIAL > GENERAL
+    
+    Returns: (category, priority)
+    """
+    text = f"{title} {description}".lower()
+    
+    # Check OPPORTUNITY keywords (highest priority)
+    if any(keyword in text for keyword in ['career', 'internship', 'recruitment']):
+        return 'OPPORTUNITY', 'HIGH'
+    
+    # Check ACADEMIC keywords
+    if any(keyword in text for keyword in ['workshop', 'seminar', 'lecture']):
+        return 'ACADEMIC', 'MEDIUM'
+    
+    # Check SOCIAL keywords
+    if any(keyword in text for keyword in ['club', 'society', 'social']):
+        return 'SOCIAL', 'NORMAL'
+    
+    # Default to GENERAL
+    return 'GENERAL', 'NORMAL'
 
 
 def apply_processing_rules(record):
     """
     Apply project rules and calculate result
+    Priority order:
+    1. Completeness check (all required fields) - INCOMPLETE
+    2. Date format validation - NEEDS REVISION
+    3. Description length check (min 40 characters) - NEEDS REVISION
+    4. Keyword classification & priority assignment - APPROVED
     """
     title = record.get('title', '')
-    description = record.get('description', '')
-    category = record.get('category', '')
-    priority = record.get('priority', '')
+    description = record.get('description', '').strip()
     event_date = record.get('event_date', '').strip()
     
-    # Check completeness first
+    # Rule 1: Check completeness (highest priority)
     is_complete, completeness_msg = check_record_completeness(record)
     
     if not is_complete:
-        # Return INCOMPLETE status
         return {
             'result': 'INCOMPLETE',
             'status': 'INCOMPLETE',
             'category': '',
-            'priority': 'LOW',
-            'note': f'Incomplete submission: {completeness_msg}. Please provide all required information.',
+            'priority': '',
+            'note': f'Incomplete submission: {completeness_msg}.',
             'processed_by': 'processing-function'
         }
     
-    # Check date format if date is provided
+    # Rule 2: Check date format
     if event_date:
         is_valid_date, date_error = validate_date_format(event_date)
         if not is_valid_date:
@@ -104,39 +141,32 @@ def apply_processing_rules(record):
                 'result': 'NEEDS REVISION',
                 'status': 'NEEDS REVISION',
                 'category': '',
-                'priority': 'NORMAL',
+                'priority': '',
                 'note': f'Date format error: {date_error}',
                 'processed_by': 'processing-function'
             }
     
-    # Calculate score
-    score = random.randint(60, 100)
+    # Rule 3: Check description length (minimum 40 characters)
+    if len(description) < 40:
+        return {
+            'result': 'NEEDS REVISION',
+            'status': 'NEEDS REVISION',
+            'category': '',
+            'priority': '',
+            'note': f'Description too short: {len(description)} characters. Minimum required: 40 characters.',
+            'processed_by': 'processing-function'
+        }
     
-    # Apply business rules based on title keywords
-    if 'exam' in title.lower() or 'test' in title.lower():
-        result = 'APPROVED'
-        note = 'Academic event - approved'
-        category = 'Academic'
-    elif 'party' in title.lower() or 'social' in title.lower():
-        result = 'APPROVED'
-        note = 'Social event - approved'
-        category = 'Social'
-    elif 'career' in title.lower() or 'job' in title.lower():
-        result = 'APPROVED'
-        note = 'Career opportunity - approved'
-        category = 'Opportunity'
-    else:
-        result = 'APPROVED'
-        note = 'Event approved after review'
-        category = category or 'General'
+    # Rule 4: Classify event and assign priority
+    category, priority = classify_event(title, description)
     
+    # All checks passed - APPROVED
     return {
-        'result': result,
-        'status': result,
+        'result': 'APPROVED',
+        'status': 'APPROVED',
         'category': category,
-        'priority': priority or 'NORMAL',
-        'note': note,
-        'score': score,
+        'priority': priority,
+        'note': f'Event classified as {category} with {priority} priority.',
         'processed_by': 'processing-function'
     }
 
