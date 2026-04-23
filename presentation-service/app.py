@@ -1,14 +1,14 @@
 """
-Campus Buzz - Presentation Service (展示服务)
-=============================================
-角色：容器服务 - 接收用户提交并展示最终结果
-技术栈：Python Flask（提供页面渲染 + API反向代理）
-端口：5000
+Campus Buzz - Presentation Service
+===================================
+Role: Container-based service for receiving submissions and showing final results
+Tech stack: Python Flask (page rendering + API proxy)
+Port: 5000
 
-职责：
-  1. 渲染前端页面（HTML/CSS/JS）
-  2. 反向代理 API 请求到 Workflow Service
-  3. 展示处理结果给用户
+Responsibilities:
+  1. Render frontend pages (HTML/CSS/JS)
+  2. Proxy API requests to the Workflow Service
+  3. Return processing results to the user
 """
 
 import os
@@ -18,7 +18,7 @@ import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 # ============================================================
-# 应用初始化
+# App setup
 # ============================================================
 app = Flask(__name__, static_folder='static', template_folder='templates')
 logging.basicConfig(
@@ -27,95 +27,95 @@ logging.basicConfig(
 )
 logger = logging.getLogger('presentation-service')
 
-# 服务地址配置（启动时读取）
+# Service URLs loaded at startup
 WORKFLOW_SERVICE_URL = os.environ.get('WORKFLOW_SERVICE_URL', 'http://workflow-service:5001')
 DATA_SERVICE_URL = os.environ.get('DATA_SERVICE_URL', 'http://data-service:5002')
 
-# 超时配置（秒）
+# Request timeout settings (seconds)
 REQUEST_TIMEOUT_SUBMIT = int(os.environ.get('REQUEST_TIMEOUT_SUBMIT', '15'))
 REQUEST_TIMEOUT_QUERY = int(os.environ.get('REQUEST_TIMEOUT_QUERY', '10'))
 
 
 # ============================================================
-# 辅助函数
+# Helper functions
 # ============================================================
 
 def proxy_request(method, url, timeout=10):
     """
-    通用代理请求函数
-    
+    Shared proxy request helper
+
     Args:
-        method: HTTP 方法 ('GET' 或 'POST')
-        url: 目标 URL
-        timeout: 超时时间（秒）
-    
+        method: HTTP method ('GET' or 'POST')
+        url: Target URL
+        timeout: Timeout in seconds
+
     Returns:
         tuple: (response_json, status_code)
     """
     start_time = time.time()
     try:
         if method == 'POST':
-            # 验证请求体
+            # Validate request body
             if not request.is_json:
-                logger.warning(f"[代理] 请求 Content-Type 不是 application/json")
+                logger.warning("[Proxy] Request Content-Type is not application/json")
                 return {'error': 'Content-Type must be application/json'}, 400
-            
+
             json_data = request.get_json(silent=True)
             if json_data is None:
-                logger.warning(f"[代理] 无法解析 JSON 请求体")
+                logger.warning("[Proxy] Failed to parse JSON request body")
                 return {'error': 'Invalid JSON body'}, 400
-            
+
             resp = requests.post(url, json=json_data, timeout=timeout)
         else:
             resp = requests.get(url, timeout=timeout)
-        
+
         elapsed = time.time() - start_time
-        
-        # 尝试解析响应
+
+        # Try to parse response as JSON
         try:
             response_data = resp.json()
         except ValueError:
-            logger.error(f"[代理] 目标服务返回非 JSON 响应: {resp.status_code}")
+            logger.error(f"[Proxy] Upstream service returned a non-JSON response: {resp.status_code}")
             return {'error': 'Internal service error'}, 502
-        
-        # 记录成功请求
-        logger.info(f"[代理] {method} {url} - {resp.status_code} ({elapsed:.2f}s)")
-        
+
+        # Log successful request
+        logger.info(f"[Proxy] {method} {url} - {resp.status_code} ({elapsed:.2f}s)")
+
         return response_data, resp.status_code
-    
+
     except requests.exceptions.Timeout:
         elapsed = time.time() - start_time
-        logger.error(f"[代理] 请求超时: {method} {url} ({elapsed:.2f}s)")
+        logger.error(f"[Proxy] Request timed out: {method} {url} ({elapsed:.2f}s)")
         return {'error': f'Service timeout after {timeout}s'}, 504
-    
+
     except requests.exceptions.ConnectionError as e:
         elapsed = time.time() - start_time
-        logger.error(f"[代理] 连接失败: {method} {url} - {str(e)} ({elapsed:.2f}s)")
-        return {'error': f'Service unavailable'}, 503
-    
+        logger.error(f"[Proxy] Connection failed: {method} {url} - {str(e)} ({elapsed:.2f}s)")
+        return {'error': 'Service unavailable'}, 503
+
     except requests.RequestException as e:
         elapsed = time.time() - start_time
-        logger.error(f"[代理] 请求异常: {method} {url} - {str(e)} ({elapsed:.2f}s)")
-        return {'error': f'Internal proxy error'}, 500
+        logger.error(f"[Proxy] Request failed: {method} {url} - {str(e)} ({elapsed:.2f}s)")
+        return {'error': 'Internal proxy error'}, 500
 
 
 # ============================================================
-# 页面路由
+# Page routes
 # ============================================================
 
 @app.route('/')
 def index():
-    """首页 - 展示提交表单和历史记录"""
+    """Main page - shows the submission form and record history"""
     return render_template('index.html')
 
 
 # ============================================================
-# API 反向代理（前端 → Presentation → Workflow → Data）
+# API proxy routes (Frontend -> Presentation -> Workflow -> Data)
 # ============================================================
 
 @app.route('/api/submit', methods=['POST'])
 def proxy_submit():
-    """代理提交请求到 Workflow Service"""
+    """Forward submission request to the Workflow Service"""
     url = f'{WORKFLOW_SERVICE_URL}/api/submit'
     response_data, status_code = proxy_request('POST', url, REQUEST_TIMEOUT_SUBMIT)
     return jsonify(response_data), status_code
@@ -123,7 +123,7 @@ def proxy_submit():
 
 @app.route('/api/status/<int:record_id>', methods=['GET'])
 def proxy_status(record_id):
-    """代理状态查询到 Workflow Service"""
+    """Forward status request to the Workflow Service"""
     url = f'{WORKFLOW_SERVICE_URL}/api/status/{record_id}'
     response_data, status_code = proxy_request('GET', url, REQUEST_TIMEOUT_QUERY)
     return jsonify(response_data), status_code
@@ -131,7 +131,7 @@ def proxy_status(record_id):
 
 @app.route('/api/records', methods=['GET'])
 def proxy_records():
-    """代理记录列表查询到 Data Service"""
+    """Forward record list request to the Data Service"""
     url = f'{DATA_SERVICE_URL}/api/records'
     response_data, status_code = proxy_request('GET', url, REQUEST_TIMEOUT_QUERY)
     return jsonify(response_data), status_code
@@ -139,7 +139,7 @@ def proxy_records():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """健康检查端点"""
+    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'service': 'presentation-service',
@@ -149,15 +149,15 @@ def health_check():
 
 
 # ============================================================
-# 启动入口
+# Entry point
 # ============================================================
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_ENV', 'production') != 'production'
-    
-    logger.info(f"[Presentation Service] 启动中...")
-    logger.info(f"[Presentation Service] 环境: {'development' if debug_mode else 'production'}")
+
+    logger.info("[Presentation Service] Starting up...")
+    logger.info(f"[Presentation Service] Environment: {'development' if debug_mode else 'production'}")
     logger.info(f"[Presentation Service] Workflow Service URL: {WORKFLOW_SERVICE_URL}")
     logger.info(f"[Presentation Service] Data Service URL: {DATA_SERVICE_URL}")
-    logger.info(f"[Presentation Service] 监听端口: 5000")
-    
+    logger.info("[Presentation Service] Listening on port: 5000")
+
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
