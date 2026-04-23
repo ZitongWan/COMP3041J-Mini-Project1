@@ -1,9 +1,9 @@
 /**
- * Campus Buzz - 历史记录加载和分页
+ * Campus Buzz - Record loading and pagination
  */
 
 /**
- * 加载历史记录（带分页）
+ * Load records with pagination
  */
 async function loadRecords() {
     const listDiv = document.getElementById('records-list');
@@ -31,7 +31,7 @@ async function loadRecords() {
 }
 
 /**
- * 渲染当前页
+ * Render the current page
  */
 function renderPage(page) {
     const listDiv = document.getElementById('records-list');
@@ -43,14 +43,14 @@ function renderPage(page) {
         <div class="record-item" data-id="${r.id}">
             <div class="record-title">${escapeHtml(r.title)}</div>
             <div class="record-meta">
-                📅 ${escapeHtml(r.event_date)} &nbsp;|&nbsp; 📍 ${escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
+                📅 {escapeHtml(r.event_date)} &amp;nbsp;|&amp;nbsp; 📍{escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
             </div>
             <div class="record-meta" style="margin-top:4px;">
                 Category: <strong>${escapeHtml(r.category || 'N/A')}</strong> &nbsp;|&nbsp;
                 Priority: <strong>${escapeHtml(r.priority || 'N/A')}</strong>
             </div>
-            ${r.note ? `<div class="record-meta" style="margin-top:4px;color:#666;">📝 ${escapeHtml(r.note)}</div>` : ''}
-            <span class="record-status status-${r.status}">${escapeHtml(r.status)}</span>
+            {r.note ? `&lt;div class=&quot;record-meta&quot; style=&quot;margin-top:4px;color:#666;&quot;&gt;📝{escapeHtml(r.note)}</div>` : ''}
+            <span class="record-status status-{r.status}&quot;&gt;{escapeHtml(r.status)}</span>
         </div>
     `).join('');
 
@@ -58,7 +58,7 @@ function renderPage(page) {
 }
 
 /**
- * 渲染分页导航
+ * Render pagination controls
  */
 function renderPagination() {
     const container = document.getElementById('pagination');
@@ -73,50 +73,54 @@ function renderPagination() {
 
     let html = '';
 
-    // 上一页
-    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+    // Previous page
+    html += `<button class="page-btn" onclick="goToPage({currentPage - 1})&quot;{currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
 
-    // 页码按钮（最多显示5个：1 ... 3 4 5 ... 10）
+    // Page buttons (show up to 5 pages: 1 ... 3 4 5 ... 10)
     if (totalPages <= 5) {
         for (let i = 1; i <= totalPages; i++) {
             html += pageBtn(i);
         }
     } else {
-        // 第一页
+        // First page
         html += pageBtn(1);
-        // 左侧省略号
+
+        // Left ellipsis
         if (currentPage > 3) {
             html += '<span class="page-ellipsis">...</span>';
         }
-        // 中间页
+
+        // Middle pages
         const start = Math.max(2, currentPage - 1);
         const end = Math.min(totalPages - 1, currentPage + 1);
         for (let i = start; i <= end; i++) {
             html += pageBtn(i);
         }
-        // 右侧省略号
+
+        // Right ellipsis
         if (currentPage < totalPages - 2) {
             html += '<span class="page-ellipsis">...</span>';
         }
-        // 最后一页
+
+        // Last page
         html += pageBtn(totalPages);
     }
 
-    // 下一页
-    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+    // Next page
+    html += `<button class="page-btn" onclick="goToPage({currentPage + 1})&quot;{currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
 
     container.innerHTML = html;
 }
 
 /**
- * 生成页码按钮 HTML
+ * Build page button HTML
  */
 function pageBtn(num) {
-    return `<button class="page-btn ${num === currentPage ? 'active' : ''}" onclick="goToPage(${num})">${num}</button>`;
+    return `<button class="page-btn {num === currentPage ? &#39;active&#39; : &#39;&#39;}&quot; onclick=&quot;goToPage({num})">${num}</button>`;
 }
 
 /**
- * 跳转到指定页
+ * Go to a specific page
  */
 function goToPage(num) {
     const totalPages = Math.ceil(allRecords.length / CONFIG.PAGE_SIZE);
@@ -127,7 +131,7 @@ function goToPage(num) {
 }
 
 /**
- * 设置刷新按钮
+ * Set up refresh button
  */
 function setupRefreshButton() {
     document.getElementById('refresh-btn').addEventListener('click', loadRecords);
