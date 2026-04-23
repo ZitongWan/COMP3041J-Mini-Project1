@@ -2,7 +2,7 @@
    Campus Buzz - Presentation Service Stylesheet
    ============================================================ */
 
-/* ==================== 全局重置 ==================== */
+/* ==================== Global reset ==================== */
 * {
     margin: 0;
     padding: 0;
@@ -21,7 +21,7 @@ body {
     margin: 0 auto;
 }
 
-/* ==================== 头部区域 ==================== */
+/* ==================== Header ==================== */
 header {
     text-align: center;
     padding: 30px 0 20px;
@@ -38,7 +38,7 @@ header h1 {
     opacity: 0.9;
 }
 
-/* ==================== 通用区块样式 ==================== */
+/* ==================== Shared section styles ==================== */
 section {
     background: white;
     border-radius: 12px;
@@ -55,7 +55,7 @@ section h2 {
     padding-bottom: 10px;
 }
 
-/* ==================== 表单样式 ==================== */
+/* ==================== Form styles ==================== */
 .form-group {
     margin-bottom: 18px;
 }
@@ -107,7 +107,7 @@ section h2 {
     color: #27ae60;
 }
 
-/* ==================== 按钮样式 ==================== */
+/* ==================== Button styles ==================== */
 button {
     padding: 12px 28px;
     border: none;
@@ -143,7 +143,7 @@ button[type="submit"]:hover,
     background: #e0e0e0;
 }
 
-/* ==================== 消息提示 ==================== */
+/* ==================== Status messages ==================== */
 .message {
     margin-top: 15px;
     padding: 12px 16px;
@@ -169,7 +169,7 @@ button[type="submit"]:hover,
     border: 1px solid #bee5eb;
 }
 
-/* ==================== 结果卡片 ==================== */
+/* ==================== Result card ==================== */
 .result-card {
     border: 2px solid #eee;
     border-radius: 10px;
@@ -215,7 +215,7 @@ button[type="submit"]:hover,
     color: #555;
 }
 
-/* ==================== 历史记录列表 ==================== */
+/* ==================== Submission history ==================== */
 .record-item {
     border: 1px solid #eee;
     border-radius: 8px;
@@ -255,7 +255,7 @@ button[type="submit"]:hover,
 .record-item .status-NEEDS-REVISION { background: #fff3cd; color: #856404; }
 .record-item .status-INCOMPLETE { background: #f8d7da; color: #721c24; }
 
-/* ==================== 加载动画 ==================== */
+/* ==================== Loading state ==================== */
 .loading {
     text-align: center;
     padding: 20px;
@@ -279,7 +279,7 @@ button[type="submit"]:hover,
     to { transform: rotate(360deg); }
 }
 
-/* ==================== 详情弹窗 ==================== */
+/* ==================== Detail modal ==================== */
 .modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -338,7 +338,7 @@ button[type="submit"]:hover,
     color: #555;
 }
 
-/* ==================== 分页导航 ==================== */
+/* ==================== Pagination ==================== */
 .pagination {
     display: flex;
     align-items: center;
@@ -385,7 +385,7 @@ button[type="submit"]:hover,
     font-size: 0.9em;
 }
 
-/* ==================== 响应式设计 ==================== */
+/* ==================== Responsive layout ==================== */
 @media (max-width: 600px) {
     body { padding: 10px; }
     section { padding: 20px; }
