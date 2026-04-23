@@ -1,25 +1,25 @@
 /**
- * Campus Buzz - Presentation Service 前端逻辑
- * 
- * 职责：
- *   1. 处理表单提交，调用 Workflow Service
- *   2. 轮询处理结果
- *   3. 展示提交历史
+ * Campus Buzz - Presentation Service frontend logic
+ *
+ * What this file does:
+ *   1. Handles form submission and sends data to the Workflow Service
+ *   2. Polls for processing results
+ *   3. Loads and displays submission history
  */
 
 // ============================================================
-// 配置
+// Config
 // ============================================================
-const WORKFLOW_URL = '/api';  // 通过 Presentation Service 反向代理
-const POLL_INTERVAL = 2000;   // 轮询间隔（毫秒）
-const MAX_POLL_COUNT = 30;    // 最大轮询次数
-const PAGE_SIZE = 5;          // 每页显示记录数
+const WORKFLOW_URL = '/api';   // Routed through the Presentation Service proxy
+const POLL_INTERVAL = 2000;    // Polling interval in milliseconds
+const MAX_POLL_COUNT = 30;     // Max number of polling attempts
+const PAGE_SIZE = 5;           // Records shown per page
 
-let allRecords = [];          // 缓存所有记录（用于分页）
+let allRecords = [];           // Cache all records for pagination
 let currentPage = 1;
 
 // ============================================================
-// 页面加载初始化
+// Initial page setup
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     loadRecords();
@@ -29,17 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
-// 表单提交处理
+// Form submission
 // ============================================================
 function setupFormHandler() {
     const form = document.getElementById('event-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const submitBtn = document.getElementById('submit-btn');
         const messageDiv = document.getElementById('submit-message');
-        
-        // 收集表单数据
+
+        // Collect form values
         const formData = {
             title: document.getElementById('title').value.trim(),
             description: document.getElementById('description').value.trim(),
@@ -47,26 +47,26 @@ function setupFormHandler() {
             event_date: document.getElementById('event_date').value.trim(),
             organiser: document.getElementById('organiser').value.trim()
         };
-        
-        // 禁用提交按钮
+
+        // Lock the button while the request is running
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
         messageDiv.style.display = 'none';
-        
+
         try {
-            // 调用 Workflow Service 提交
+            // Send submission to the Workflow Service
             const resp = await fetch(`${WORKFLOW_URL}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
-            
+
             const result = await resp.json();
-            
+
             if (resp.ok) {
                 showMessage('info', `Submission received! Record ID: ${result.record_id}. Processing in background...`);
-                
-                // 开始轮询处理结果
+
+                // Start polling for the final result
                 pollResult(result.record_id);
             } else {
                 showMessage('error', result.error || 'Submission failed. Please try again.');
@@ -82,12 +82,12 @@ function setupFormHandler() {
 }
 
 // ============================================================
-// 描述字符计数器
+// Description counter
 // ============================================================
 function setupDescCounter() {
     const desc = document.getElementById('description');
     const counter = document.getElementById('desc-counter');
-    
+
     desc.addEventListener('input', () => {
         const len = desc.value.trim().length;
         counter.textContent = `${len} / 40 characters minimum`;
@@ -96,28 +96,31 @@ function setupDescCounter() {
 }
 
 // ============================================================
-// 轮询处理结果
+// Poll for processing result
 // ============================================================
 async function pollResult(recordId) {
     let pollCount = 0;
-    
+
     const poll = async () => {
         pollCount++;
-        
+
         try {
-            const resp = await fetch(`${WORKFLOW_URL}/status/${recordId}`);
+            const resp = await fetch(`WORKFLOWURL/status/{WORKFLOW_URL}/status/WORKFLOWU​RL/status/{recordId}`);
             const record = await resp.json();
-            
+
             if (record.status && record.status !== 'PENDING') {
-                // 处理完成，显示结果
+                // Done processing, show the result
                 displayResult(record);
                 return;
             }
-            
+
             if (pollCount < MAX_POLL_COUNT) {
                 setTimeout(poll, POLL_INTERVAL);
             } else {
-                showMessage('info', `Processing is taking longer than expected. Record ID: ${recordId}. You can check the result in the history below.`);
+                showMessage(
+                    'info',
+                    `Processing is taking longer than expected. Record ID: ${recordId}. You can check the result in the history below.`
+                );
                 resetSubmitButton();
             }
         } catch (err) {
@@ -129,34 +132,34 @@ async function pollResult(recordId) {
             }
         }
     };
-    
-    // 首次轮询延迟1秒
+
+    // Wait a second before the first poll
     setTimeout(poll, 1000);
 }
 
 // ============================================================
-// 显示处理结果
+// Show processing result
 // ============================================================
 function displayResult(record) {
-    // 隐藏表单区域
+    // Hide the form section
     document.getElementById('submit-section').style.display = 'none';
-    
-    // 显示结果区域
+
+    // Show the result section
     const resultSection = document.getElementById('result-section');
     resultSection.style.display = 'block';
-    
-    // 设置状态徽章
+
+    // Update status badge
     const statusBadge = document.getElementById('result-status');
     statusBadge.textContent = record.status;
     statusBadge.className = `status-badge status-${record.status}`;
-    
-    // 填充详情
+
+    // Fill in result details
     document.getElementById('result-id').textContent = record.id;
     document.getElementById('result-category').textContent = record.category || 'N/A';
     document.getElementById('result-priority').textContent = record.priority || 'N/A';
     document.getElementById('result-note').textContent = record.note || 'No additional notes.';
-    
-    // "新提交"按钮
+
+    // Reset the page for a new submission
     document.getElementById('new-submission-btn').addEventListener('click', () => {
         resultSection.style.display = 'none';
         document.getElementById('submit-section').style.display = 'block';
@@ -164,16 +167,17 @@ function displayResult(record) {
         document.getElementById('desc-counter').textContent = '0 / 40 characters minimum';
         document.getElementById('desc-counter').className = '';
         resetSubmitButton();
-        // 刷新历史记录
+
+        // Refresh history after going back
         loadRecords();
     });
-    
-    // 刷新历史记录
+
+    // Refresh history after result comes back
     loadRecords();
 }
 
 // ============================================================
-// 加载历史记录（带分页）
+// Load submission history with pagination
 // ============================================================
 async function loadRecords() {
     const listDiv = document.getElementById('records-list');
@@ -200,7 +204,7 @@ async function loadRecords() {
     }
 }
 
-// 渲染当前页
+// Render one page of records
 function renderPage(page) {
     const listDiv = document.getElementById('records-list');
     const start = (page - 1) * PAGE_SIZE;
@@ -211,21 +215,21 @@ function renderPage(page) {
         <div class="record-item" data-id="${r.id}">
             <div class="record-title">${escapeHtml(r.title)}</div>
             <div class="record-meta">
-                📅 ${escapeHtml(r.event_date)} &nbsp;|&nbsp; 📍 ${escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
+                📅 {escapeHtml(r.event_date)} &amp;nbsp;|&amp;nbsp; 📍{escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
             </div>
             <div class="record-meta" style="margin-top:4px;">
                 Category: <strong>${escapeHtml(r.category || 'N/A')}</strong> &nbsp;|&nbsp;
                 Priority: <strong>${escapeHtml(r.priority || 'N/A')}</strong>
             </div>
-            ${r.note ? `<div class="record-meta" style="margin-top:4px;color:#666;">📝 ${escapeHtml(r.note)}</div>` : ''}
-            <span class="record-status status-${r.status}">${escapeHtml(r.status)}</span>
+            {r.note ? `&lt;div class=&quot;record-meta&quot; style=&quot;margin-top:4px;color:#666;&quot;&gt;📝{escapeHtml(r.note)}</div>` : ''}
+            <span class="record-status status-{r.status}&quot;&gt;{escapeHtml(r.status)}</span>
         </div>
     `).join('');
 
     attachRecordClickHandlers();
 }
 
-// 渲染分页导航
+// Render pagination controls
 function renderPagination() {
     const container = document.getElementById('pagination');
     const totalPages = Math.ceil(allRecords.length / PAGE_SIZE);
@@ -239,43 +243,47 @@ function renderPagination() {
 
     let html = '';
 
-    // 上一页
-    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+    // Previous page
+    html += `<button class="page-btn" onclick="goToPage({currentPage - 1})&quot;{currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
 
-    // 页码按钮（最多显示5个：1 ... 3 4 5 ... 10）
+    // Page buttons
     if (totalPages <= 5) {
         for (let i = 1; i <= totalPages; i++) {
             html += pageBtn(i);
         }
     } else {
-        // 第一页
+        // First page
         html += pageBtn(1);
-        // 左侧省略号
+
+        // Left ellipsis
         if (currentPage > 3) {
             html += '<span class="page-ellipsis">...</span>';
         }
-        // 中间页
+
+        // Middle pages
         const start = Math.max(2, currentPage - 1);
         const end = Math.min(totalPages - 1, currentPage + 1);
         for (let i = start; i <= end; i++) {
             html += pageBtn(i);
         }
-        // 右侧省略号
+
+        // Right ellipsis
         if (currentPage < totalPages - 2) {
             html += '<span class="page-ellipsis">...</span>';
         }
-        // 最后一页
+
+        // Last page
         html += pageBtn(totalPages);
     }
 
-    // 下一页
-    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+    // Next page
+    html += `<button class="page-btn" onclick="goToPage({currentPage + 1})&quot;{currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
 
     container.innerHTML = html;
 }
 
 function pageBtn(num) {
-    return `<button class="page-btn ${num === currentPage ? 'active' : ''}" onclick="goToPage(${num})">${num}</button>`;
+    return `<button class="page-btn {num === currentPage ? &#39;active&#39; : &#39;&#39;}&quot; onclick=&quot;goToPage({num})">${num}</button>`;
 }
 
 function goToPage(num) {
@@ -287,7 +295,7 @@ function goToPage(num) {
 }
 
 // ============================================================
-// 工具函数
+// Helpers
 // ============================================================
 function showMessage(type, text) {
     const div = document.getElementById('submit-message');
@@ -313,12 +321,12 @@ function escapeHtml(text) {
 }
 
 // ============================================================
-// 详情弹窗
+// Record detail modal
 // ============================================================
 function openRecordModal(record) {
     const modal = document.getElementById('record-modal');
 
-    // 填充字段
+    // Fill modal fields
     document.getElementById('modal-id').textContent = record.id || 'N/A';
     document.getElementById('modal-title').textContent = record.title || 'N/A';
     document.getElementById('modal-desc').textContent = record.description || 'N/A';
@@ -329,7 +337,7 @@ function openRecordModal(record) {
     document.getElementById('modal-priority').textContent = record.priority || 'N/A';
     document.getElementById('modal-note').textContent = record.note || 'No additional notes.';
 
-    // 状态徽章
+    // Update status badge
     const badge = document.getElementById('modal-status');
     badge.textContent = record.status || 'N/A';
     badge.className = `status-badge status-${record.status}`;
@@ -342,20 +350,22 @@ function closeRecordModal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 点击 X 关闭
+    // Close on X click
     document.getElementById('modal-close').addEventListener('click', closeRecordModal);
-    // 点击遮罩关闭
+
+    // Close when clicking outside the modal content
     document.getElementById('record-modal').addEventListener('click', (e) => {
         if (e.target.id === 'record-modal') closeRecordModal();
     });
-    // ESC 键关闭
+
+    // Close on Escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeRecordModal();
     });
 });
 
 // ============================================================
-// 点击历史记录卡片 → 打开详情弹窗
+// Open modal when a history card is clicked
 // ============================================================
 function attachRecordClickHandlers() {
     document.querySelectorAll('.record-item').forEach(card => {
