@@ -1,9 +1,9 @@
 /**
- * Campus Buzz - Record loading and pagination
+ * Campus Buzz - History record loading and pagination
  */
 
 /**
- * Load records with pagination
+ * Load history records (with pagination)
  */
 async function loadRecords() {
     const listDiv = document.getElementById('records-list');
@@ -31,7 +31,7 @@ async function loadRecords() {
 }
 
 /**
- * Render the current page
+ * Render current page
  */
 function renderPage(page) {
     const listDiv = document.getElementById('records-list');
@@ -43,14 +43,14 @@ function renderPage(page) {
         <div class="record-item" data-id="${r.id}">
             <div class="record-title">${escapeHtml(r.title)}</div>
             <div class="record-meta">
-                📅 {escapeHtml(r.event_date)} &amp;nbsp;|&amp;nbsp; 📍{escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
+                📅 ${escapeHtml(r.event_date)} &nbsp;|&nbsp; 📍 ${escapeHtml(r.location)} &nbsp;|&nbsp; 👤 ${escapeHtml(r.organiser)}
             </div>
             <div class="record-meta" style="margin-top:4px;">
                 Category: <strong>${escapeHtml(r.category || 'N/A')}</strong> &nbsp;|&nbsp;
                 Priority: <strong>${escapeHtml(r.priority || 'N/A')}</strong>
             </div>
-            {r.note ? `&lt;div class=&quot;record-meta&quot; style=&quot;margin-top:4px;color:#666;&quot;&gt;📝{escapeHtml(r.note)}</div>` : ''}
-            <span class="record-status status-{r.status}&quot;&gt;{escapeHtml(r.status)}</span>
+            ${r.note ? `<div class="record-meta" style="margin-top:4px;color:#666;">📝 ${escapeHtml(r.note)}</div>` : ''}
+            <span class="record-status status-${r.status}">${escapeHtml(r.status)}</span>
         </div>
     `).join('');
 
@@ -58,7 +58,7 @@ function renderPage(page) {
 }
 
 /**
- * Render pagination controls
+ * Render pagination navigation
  */
 function renderPagination() {
     const container = document.getElementById('pagination');
@@ -74,9 +74,9 @@ function renderPagination() {
     let html = '';
 
     // Previous page
-    html += `<button class="page-btn" onclick="goToPage({currentPage - 1})&quot;{currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
 
-    // Page buttons (show up to 5 pages: 1 ... 3 4 5 ... 10)
+    // Page number buttons (show at most 5: 1 ... 3 4 5 ... 10)
     if (totalPages <= 5) {
         for (let i = 1; i <= totalPages; i++) {
             html += pageBtn(i);
@@ -84,43 +84,39 @@ function renderPagination() {
     } else {
         // First page
         html += pageBtn(1);
-
         // Left ellipsis
         if (currentPage > 3) {
             html += '<span class="page-ellipsis">...</span>';
         }
-
         // Middle pages
         const start = Math.max(2, currentPage - 1);
         const end = Math.min(totalPages - 1, currentPage + 1);
         for (let i = start; i <= end; i++) {
             html += pageBtn(i);
         }
-
         // Right ellipsis
         if (currentPage < totalPages - 2) {
             html += '<span class="page-ellipsis">...</span>';
         }
-
         // Last page
         html += pageBtn(totalPages);
     }
 
     // Next page
-    html += `<button class="page-btn" onclick="goToPage({currentPage + 1})&quot;{currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
 
     container.innerHTML = html;
 }
 
 /**
- * Build page button HTML
+ * Generate page button HTML
  */
 function pageBtn(num) {
-    return `<button class="page-btn {num === currentPage ? &#39;active&#39; : &#39;&#39;}&quot; onclick=&quot;goToPage({num})">${num}</button>`;
+    return `<button class="page-btn ${num === currentPage ? 'active' : ''}" onclick="goToPage(${num})">${num}</button>`;
 }
 
 /**
- * Go to a specific page
+ * Jump to specified page
  */
 function goToPage(num) {
     const totalPages = Math.ceil(allRecords.length / CONFIG.PAGE_SIZE);
@@ -131,7 +127,7 @@ function goToPage(num) {
 }
 
 /**
- * Set up refresh button
+ * Setup refresh button
  */
 function setupRefreshButton() {
     document.getElementById('refresh-btn').addEventListener('click', loadRecords);
