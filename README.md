@@ -5,22 +5,22 @@ A hybrid cloud system for campus event submission and review, combining **Docker
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Docker Containers                         │
-│                                                                 │
-│  [Presentation] ──→ [Workflow] ──→ [Data Service + SQLite]     │
-│     :5000            :5001              :5002                   │
-└────────────────────────────┬────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                        Docker Containers                           │
+│                                                                    │
+│     [Presentation] ──→ [Workflow] ──→ [Data Service + SQLite]      │
+│        :5000            :5001              :5002                   │
+└────────────────────────────┬───────────────────────────────────────┘
                              │ HTTP Trigger
                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                Alibaba Cloud FC 3.0 (Serverless)               │
-│                                                                 │
-│  [Submission Event FN] ──→ [Processing FN] ──→ [Result Update FN] │
-│       (事件触发)              (规则判定)           (结果回写)        │
-│                                                                 │
-│                    ──→ Data Service (via public URL)             │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                Alibaba Cloud FC 3.0 (Serverless)                   │
+│                                                                    │
+│  [Submission Event FN] ──→ [Processing FN] ──→ [Result Update FN]  │
+│      (event trigger)       (Rule judgment)      (Result feedback)  │
+│                                                                    │
+│                  ──→ Data Service (via public URL)                 │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Components
